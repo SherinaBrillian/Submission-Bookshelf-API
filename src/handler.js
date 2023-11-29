@@ -33,13 +33,13 @@ const addBookHandler = (request, h) => {
     return response;
   }
 
-  const bookId = nanoid(16);
+  const id = nanoid(16);
   const insertedAt = new Date().toISOString();
   const updatedAt = insertedAt;
   const finished = pageCount === readPage;
 
   const newBook = {
-    bookId,
+    id,
     name,
     year,
     author,
@@ -55,13 +55,13 @@ const addBookHandler = (request, h) => {
 
   books.push(newBook);
 
-  const isSuccess = books.filter((book) => book.bookId === bookId).length > 0;
+  const isSuccess = books.filter((book) => book.id === id).length > 0;
   if (isSuccess) {
     const response = h.response({
       status: "success",
       message: "Buku berhasil ditambahkan",
       data: {
-        bookId: bookId,
+        bookId: id,
       },
     });
     response.code(201);
@@ -92,6 +92,7 @@ const getAllBooksHandler = (request, h) => {
       (book) => book.reading === !!Number(reading)
     );
   }
+
   if (finished !== undefined) {
     filteredBooks = filteredBooks.filter(
       (book) => book.finished === !!Number(finished)
@@ -102,21 +103,22 @@ const getAllBooksHandler = (request, h) => {
     status: "success",
     data: {
       books: filteredBooks.map((book) => ({
-        bookId: book.bookId,
+        id: book.id,
         name: book.name,
         publisher: book.publisher,
       })),
     },
   });
-
   response.code(200);
+
   return response;
 };
 
 const getBookByIdHandler = (request, h) => {
   const { bookId } = request.params;
-
-  const book = books.find((b) => b.bookId == bookId)[0];
+  console.log(bookId);
+  const book = books.filter((b) => b.id === bookId)[0];
+  console.log(books);
   console.log(book);
   if (book !== undefined) {
     return {
@@ -132,6 +134,110 @@ const getBookByIdHandler = (request, h) => {
     message: "Buku tidak ditemukan",
   });
   response.code(404);
+
   return response;
 };
-module.exports = { addBookHandler, getAllBooksHandler, getBookByIdHandler };
+
+const editBookByIdHandler = (request, h) => {
+  const { bookId } = request.params;
+  const {
+    name,
+    year,
+    author,
+    summary,
+    publisher,
+    pageCount,
+    readPage,
+    reading,
+  } = request.payload;
+  const updatedAt = new Date().toISOString();
+  const index = books.findIndex((book) => book.id === bookId);
+
+  if (index !== -1) {
+    if (name === undefined) {
+      const response = h.response({
+        status: "fail",
+        message: "Gagal memperbarui buku. Mohon isi nama buku",
+      });
+      response.code(400);
+
+      return response;
+    }
+
+    if (pageCount < readPage) {
+      const response = h.response({
+        status: "fail",
+        message:
+          "Gagal memperbarui buku. readPage tidak boleh lebih besar dari pageCount",
+      });
+      response.code(400);
+
+      return response;
+    }
+
+    const finished = pageCount === readPage;
+
+    books[index] = {
+      ...books[index],
+      name,
+      year,
+      author,
+      summary,
+      publisher,
+      pageCount,
+      readPage,
+      finished,
+      reading,
+      updatedAt,
+    };
+
+    const response = h.response({
+      status: "success",
+      message: "Buku berhasil diperbarui",
+    });
+    response.code(200);
+
+    return response;
+  }
+
+  const response = h.response({
+    status: "fail",
+    message: "Gagal memperbarui buku. Id tidak ditemukan",
+  });
+  response.code(404);
+
+  return response;
+};
+
+const deleteBookByIdHandler = (request, h) => {
+  const { bookId } = request.params;
+
+  const index = books.findIndex((note) => note.id === bookId);
+
+  if (index !== -1) {
+    books.splice(index, 1);
+    const response = h.response({
+      status: "success",
+      message: "Buku berhasil dihapus",
+    });
+    response.code(200);
+
+    return response;
+  }
+
+  const response = h.response({
+    status: "fail",
+    message: "Buku gagal dihapus. Id tidak ditemukan",
+  });
+  response.code(404);
+
+  return response;
+};
+
+module.exports = {
+  addBookHandler,
+  getAllBooksHandler,
+  getBookByIdHandler,
+  editBookByIdHandler,
+  deleteBookByIdHandler,
+};
